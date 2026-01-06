@@ -10,39 +10,39 @@ app = FastAPI(
 )
 
 # ======================================================
-# IN-MEMORY STORE (PHASE 1 — SAFE)
+# IN-MEMORY STORE (PHASE 1)
 # ======================================================
 
 ASSESSMENTS: Dict[str, Dict[str, Any]] = {}
 
 # ======================================================
-# FORM 34 PAYLOAD (SCHEMA v1.0 — LOCKED)
+# FORM 34 PAYLOAD (SCHEMA v1.0 — DEFENSIVE)
 # ======================================================
 
 class Form34Payload(BaseModel):
-    age: int = 0
-    country: str = ""
-    marital_status: str = ""
-    education: str = ""
-    test_type: str = ""
+    age: Optional[int] = 0
+    country: Optional[str] = ""
+    marital_status: Optional[str] = ""
+    education: Optional[str] = ""
+    test_type: Optional[str] = ""
 
-    clb_listening: int = 0
-    clb_reading: int = 0
-    clb_writing: int = 0
-    clb_speaking: int = 0
+    clb_listening: Optional[int] = 0
+    clb_reading: Optional[int] = 0
+    clb_writing: Optional[int] = 0
+    clb_speaking: Optional[int] = 0
 
-    foreign_exp: int = 0
-    canadian_exp: int = 0
-    teer: int = 0
+    foreign_exp: Optional[int] = 0
+    canadian_exp: Optional[int] = 0
+    teer: Optional[int] = 0
 
     schema_version: Optional[str] = "1.0"
     submitted_at: Optional[str] = None
 
     class Config:
-        extra = "ignore"   # 🔑 THIS IS THE FIX
+        extra = "ignore"
 
 # ======================================================
-# HEALTH CHECK
+# HEALTH
 # ======================================================
 
 @app.get("/health")
@@ -50,7 +50,7 @@ def health():
     return {"status": "ok"}
 
 # ======================================================
-# ASSESSMENT ENDPOINT (AUTHORITATIVE)
+# ASSESS
 # ======================================================
 
 @app.post("/assess")
@@ -112,14 +112,13 @@ def assess(payload: Form34Payload):
 
     ASSESSMENTS[token] = snapshot
 
-    # 🔒 CONTRACT FIX — WORDPRESS EXPECTS THIS SHAPE
     return {
         "success": True,
         "token": token
     }
 
 # ======================================================
-# RESULT FETCH (READ-ONLY)
+# RESULT
 # ======================================================
 
 @app.get("/result/{token}")
