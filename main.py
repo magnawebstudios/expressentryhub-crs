@@ -38,6 +38,9 @@ class Form34Payload(BaseModel):
     schema_version: Optional[str] = "1.0"
     submitted_at: Optional[str] = None
 
+    class Config:
+        extra = "ignore"   # 🔑 THIS IS THE FIX
+
 # ======================================================
 # HEALTH CHECK
 # ======================================================
