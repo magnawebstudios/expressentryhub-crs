@@ -2,40 +2,67 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from uuid import uuid4
 from datetime import datetime
+from typing import Optional, Dict, Any
 
 app = FastAPI(
     title="Express Entry Hub CRS Engine",
     version="1.0.0"
 )
 
-# In-memory store (Phase 1)
-ASSESSMENTS = {}
+# ======================================================
+# IN-MEMORY STORE (PHASE 1 — SAFE)
+# ======================================================
+
+ASSESSMENTS: Dict[str, Dict[str, Any]] = {}
+
+# ======================================================
+# FORM 34 PAYLOAD (SCHEMA v1.0 — LOCKED)
+# ======================================================
 
 class Form34Payload(BaseModel):
-    meta: dict
-    personal: dict
-    marital: dict | None = None
-    education: dict | None = None
-    language: dict | None = None
-    work: dict | None = None
-    flags: dict | None = None
+    age: int = 0
+    country: str = ""
+    marital_status: str = ""
+    education: str = ""
+    test_type: str = ""
 
+    clb_listening: int = 0
+    clb_reading: int = 0
+    clb_writing: int = 0
+    clb_speaking: int = 0
+
+    foreign_exp: int = 0
+    canadian_exp: int = 0
+    teer: int = 0
+
+    schema_version: Optional[str] = "1.0"
+    submitted_at: Optional[str] = None
+
+# ======================================================
+# HEALTH CHECK
+# ======================================================
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+# ======================================================
+# ASSESSMENT ENDPOINT (AUTHORITATIVE)
+# ======================================================
 
 @app.post("/assess")
 def assess(payload: Form34Payload):
+
     token = f"eeh_{uuid4().hex}"
 
     snapshot = {
         "meta": {
             "token": token,
             "engine_version": "crs-2026.01",
+            "schema_version": "1.0",
             "created_at": datetime.utcnow().isoformat()
         },
+        "input": payload.dict(),
         "crs": {
             "total": 462,
             "core_human_capital": 298,
@@ -82,15 +109,19 @@ def assess(payload: Form34Payload):
 
     ASSESSMENTS[token] = snapshot
 
+    # 🔒 CONTRACT FIX — WORDPRESS EXPECTS THIS SHAPE
     return {
-        "token": token,
-        "engine_version": snapshot["meta"]["engine_version"],
-        "schema_version": "1.0"
+        "success": True,
+        "token": token
     }
 
+# ======================================================
+# RESULT FETCH (READ-ONLY)
+# ======================================================
 
 @app.get("/result/{token}")
 def get_result(token: str):
+
     if token not in ASSESSMENTS:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
