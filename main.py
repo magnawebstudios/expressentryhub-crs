@@ -1,3 +1,5 @@
+# deploy-trigger: defensive Form34 schema sync (Render redeploy)
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from uuid import uuid4
@@ -10,13 +12,13 @@ app = FastAPI(
 )
 
 # ======================================================
-# IN-MEMORY STORE (PHASE 1)
+# IN-MEMORY STORE (PHASE 1 — SAFE, RESET ON RESTART)
 # ======================================================
 
 ASSESSMENTS: Dict[str, Dict[str, Any]] = {}
 
 # ======================================================
-# FORM 34 PAYLOAD (SCHEMA v1.0 — DEFENSIVE)
+# FORM 34 PAYLOAD (SCHEMA v1.0 — DEFENSIVE & FORGIVING)
 # ======================================================
 
 class Form34Payload(BaseModel):
@@ -39,10 +41,10 @@ class Form34Payload(BaseModel):
     submitted_at: Optional[str] = None
 
     class Config:
-        extra = "ignore"
+        extra = "ignore"  # 🔒 ignore unknown fields from WP / Fluent Forms
 
 # ======================================================
-# HEALTH
+# HEALTH CHECK
 # ======================================================
 
 @app.get("/health")
@@ -50,7 +52,7 @@ def health():
     return {"status": "ok"}
 
 # ======================================================
-# ASSESS
+# ASSESSMENT ENDPOINT (AUTHORITATIVE BRAIN)
 # ======================================================
 
 @app.post("/assess")
@@ -112,13 +114,14 @@ def assess(payload: Form34Payload):
 
     ASSESSMENTS[token] = snapshot
 
+    # 🔒 CONTRACT FIX — WordPress expects THIS shape only
     return {
         "success": True,
         "token": token
     }
 
 # ======================================================
-# RESULT
+# RESULT FETCH (READ-ONLY SNAPSHOT)
 # ======================================================
 
 @app.get("/result/{token}")
